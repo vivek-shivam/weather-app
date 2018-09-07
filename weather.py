@@ -73,7 +73,8 @@ class Application(object):
         self.lastupdateLabel.grid(row=5, column=1, sticky=W)
         self.forecastList = Listbox(self.weatherBlock, height=4)
         self.forecastList.grid(row=6, columnspan=2, sticky=W + E)
-
+        self.mapView = Canvas(self.weatherBlock, bg='grey', width=self._MapWidth, height=self._MapHeight)
+        self.mapView.grid(row=7, columnspan=2)
         self.weatherBlock.pack(side=BOTTOM, fill='both')
 
         self.checkArgs()
@@ -135,7 +136,16 @@ class Application(object):
                                          forecast['day'] + " " + forecast['date'] + " " + forecast['text'] + " Min " +
                                          forecast['low'] + tempU + " Max " + forecast['high'] + tempU)
 
-
+            coord = self.retrieveGeoData(name)
+            self.image_url = "http://maps.google.com/maps/api/staticmap?center=" + str(coord['latitude']) + "," + str(
+                coord['longitude']) + "&zoom=" + str(self._MapZoom) + "&size=" + str(self._MapWidth) + "x" + str(
+                self._MapHeight) + "&format=gif&maptype=terrain&markers=size:mid%7Ccolor:red%7C" + str(
+                coord['latitude']) + "," + str(coord['longitude']) + "&sensor=false&"
+            self.image_byt = urlopen(self.image_url).read()
+            self.image_b64 = base64.encodestring(self.image_byt)
+            self.photo = PhotoImage(data=self.image_b64)
+            self.mapView.delete(ALL)
+            self.mapView.create_image(0, 0, image=self.photo, anchor="nw")
         except urllib.error.URLError:
             self.showInternetErrorMsg()
             self.quit()
@@ -154,8 +164,25 @@ class Application(object):
         finally:
             pass
 
-    def quit(self):
-        self._tk.destroy()
+    def retrieveGeoData(self, name):
+        try:
+            baseurl = "https://query.yahooapis.com/v1/public/yql?"
+            yql_query = "select * from geo.places(1) where text=\"" + name + "\""
+            yql_url = baseurl + urllib.parse.urlencode({'q': yql_query}) + "&format=json"
+            result = urllib.request.urlopen(yql_url).read()
+            data = json.loads(result.decode())
+            coord = {}
+            coord['latitude'] = data['query']['results']['place']['centroid']['latitude']
+            coord['longitude'] = data['query']['results']['place']['centroid']['longitude']
+            return coord
+        except urllib.error.URLError:
+            pass
+        except TypeError:
+            pass
+        else:
+            pass
+        finally:
+            pass
 
     def quit(self):
         self._tk.destroy()
